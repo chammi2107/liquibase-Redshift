@@ -1,0 +1,62 @@
+name: Liquibase Update with Redshift
+on:
+  workflow_dispatch:
+    inputs:
+      changelog_file:
+        description: 'Liquibase changelog file name'
+        required: true
+        default: 'changelog.sql'
+      changelog_file_path:
+        description: 'Path to the Liquibase changelog file'
+        required: true
+        default: 'redshift/stg/install'
+      schema_name:
+        description: 'Your schema name'
+        required: true
+        default: 'public'
+
+jobs:
+  liquibase-update:
+    runs-on: lytx-data-runner
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3  
+
+      - name: Install Java
+        run: |
+          sudo apt update
+          sudo apt install -y openjdk-17-jdk
+
+      - name: Set Environment Variables
+        env:
+          JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+          PATH: ${{ env.JAVA_HOME }}/bin:${{ env.PATH }}
+        run: |
+          echo "JAVA_HOME is set to: $JAVA_HOME"
+          echo "PATH is set to: $PATH"
+          java -version
+         
+      - name: Download Liquibase dependency
+        run: |
+          curl -L -o redshift-jdbc42-2.1.0.28.jar https://s3.amazonaws.com/redshift-downloads/drivers/jdbc/2.1.0.28/redshift-jdbc42-2.1.0.28.jar      
+          wget --no-verbose https://github.com/liquibase/liquibase/releases/download/v4.28.0/liquibase-4.28.0.tar.gz -O /tmp/liquibase.tar.gz && \
+          sudo tar -zxf /tmp/liquibase.tar.gz -C /usr/local/bin/ && \
+          sudo chmod -R a+x /usr/local/bin/liquibase && \
+          rm -rf /tmp/liquibase.tar.gz
+          curl -L -o /usr/local/bin/lib/liquibase-redshift-4.28.0.jar https://repo1.maven.org/maven2/org/liquibase/ext/liquibase-redshift/4.28.0/liquibase-redshift-4.28.0.jar
+
+      - name: Create Liquibase property file dynamically
+        run: |
+          touch liquibase.properties
+          echo "changeLogFile=${{ github.event.inputs.changelog_file_path }}/${{ github.event.inputs.changelog_file }}" > liquibase.properties
+          echo "url=${{ secrets.REDSHIFT_ENDPOINT }}" >> liquibase.properties
+          echo "username=${{ secrets.REDSHIFT_USERNAME }}" >> liquibase.properties
+          echo "password=${{ secrets.REDSHIFT_PASSWORD }}" >> liquibase.properties
+          echo "classpath=./redshift-jdbc42-2.1.0.28.jar" >> liquibase.properties
+          echo "liquibase.sql.showSqlWarnings=true" >> liquibase.properties
+          echo "defaultSchemaName=${{ github.event.inputs.schema_name }}" >> liquibase.properties
+          cat liquibase.properties
+
+      - name: Run liquibase
+        run: |
+          liquibase update
