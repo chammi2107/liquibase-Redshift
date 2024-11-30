@@ -5,19 +5,19 @@ on:
       changelog_file:
         description: 'Liquibase changelog file name'
         required: true
-        default: 'changelog.sql'
+        default: 'users_changelog.sql'
       changelog_file_path:
         description: 'Path to the Liquibase changelog file'
         required: true
-        default: 'redshift/stg/install'
+        default: 'stg/install'
       schema_name:
         description: 'Your schema name'
         required: true
-        default: 'public'
+        default: 'users'
 
 jobs:
   liquibase-update:
-    runs-on: lytx-data-runner
+    runs-on: data-runner
     steps:
       - name: Check out code
         uses: actions/checkout@v3  
