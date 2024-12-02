@@ -12,7 +12,8 @@ Inputs:
 
 **schema_name**: Schema name for Liquibase updates (default: install).
 
-<img width="558" alt="{673415A6-2996-41B7-A7FB-89628A3F33DA}" src="https://github.com/user-attachments/assets/f8944995-c196-423e-bbc5-72e24230c251">
+<img width="560" alt="{43585F8B-D3FE-417C-8DF6-0E11E25DA492}" src="https://github.com/user-attachments/assets/ce902493-2344-45a2-8d6f-8f1398275bad">
+
 
 
 
