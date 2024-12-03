@@ -6,22 +6,14 @@ on:
         description: 'Path to the Liquibase changelog file'
         required: true
         default: 'redshift/stg/install'
-      changelog_file:
-        description: 'Liquibase changelog file name'
-        required: true
-        default: 'install_changelog.sql'
       environment:
         description: 'Environment (dev, stg, prod)'
         required: true
         default: 'stg'
-      schema_name:
-        description: 'Your schema name'
-        required: true
-        default: 'public'
 
 jobs:
   liquibase-update:
-    runs-on: lytx-data-runner
+    runs-on: ${{ github.event.inputs.environment == 'prod' && 'prod-runner' || 'non-prod-runner' }}
     steps:
       - name: Check out code
         uses: actions/checkout@v3  
@@ -39,20 +31,26 @@ jobs:
           echo "JAVA_HOME is set to: $JAVA_HOME"
           echo "PATH is set to: $PATH"
           java -version
-          
+         
       - name: Download Liquibase dependency
         run: |
-          curl -L -o redshift-jdbc42-2.1.0.28.jar https://s3.amazonaws.com/redshift-downloads/drivers/jdbc/2.1.0.28/redshift-jdbc42-2.1.0.28.jar       
+          curl -L -o redshift-jdbc42-2.1.0.28.jar https://s3.amazonaws.com/redshift-downloads/drivers/jdbc/2.1.0.28/redshift-jdbc42-2.1.0.28.jar      
           wget --no-verbose https://github.com/liquibase/liquibase/releases/download/v4.28.0/liquibase-4.28.0.tar.gz -O /tmp/liquibase.tar.gz && \
           sudo tar -zxf /tmp/liquibase.tar.gz -C /usr/local/bin/ && \
           sudo chmod -R a+x /usr/local/bin/liquibase && \
           rm -rf /tmp/liquibase.tar.gz
           curl -L -o /usr/local/bin/lib/liquibase-redshift-4.28.0.jar https://repo1.maven.org/maven2/org/liquibase/ext/liquibase-redshift/4.28.0/liquibase-redshift-4.28.0.jar
 
+      - name: Get schema name dynamically
+        id: get-schema
+        run: |
+          schema_name=$(echo "${{ github.event.inputs.changelog_file_path }}" | awk -F'/' '{print $3}')
+          echo "schema_name=$schema_name" >> $GITHUB_ENV
+
       - name: Create Liquibase property file dynamically
         run: |
           touch liquibase.properties
-          echo "changeLogFile=${{ github.event.inputs.changelog_file_path }}/${{ github.event.inputs.changelog_file }}" > liquibase.properties
+          echo "changeLogFile=${{ github.event.inputs.changelog_file_path }}/changelog.sql" > liquibase.properties
           if [[ "${{ github.event.inputs.environment }}" == "dev" ]]; then
           echo "url=${{ secrets.DEV_REDSHIFT_ENDPOINT }}" >> liquibase.properties
           echo "username=${{ secrets.DEV_REDSHIFT_USERNAME }}" >> liquibase.properties
@@ -71,8 +69,7 @@ jobs:
           fi
           echo "classpath=./redshift-jdbc42-2.1.0.28.jar" >> liquibase.properties
           echo "liquibase.sql.showSqlWarnings=true" >> liquibase.properties
-          echo "defaultSchemaName=${{ github.event.inputs.schema_name }}" >> liquibase.properties
-          cat liquibase.properties
+          echo "defaultSchemaName=${{ env.schema_name }}" >> liquibase.properties
 
       - name: Run liquibase
         run: |
