@@ -1,6 +1,13 @@
 # Liquibase Update for Redshift Workflow
 This workflow automates the process of updating a Redshift database using Liquibase. It dynamically creates a Liquibase properties file based on the environment (dev, stg, or prod) and executes the Liquibase update command with the specified changelog file.
 
+#Runners
+
+ - prod-runner
+ - non-prod-runner
+   
+Above two self hosted runners I am using and updated the network routes to connect to the prod and non-prod databases/warehouse.
+
 # Workflow Overview
 Inputs:
 
